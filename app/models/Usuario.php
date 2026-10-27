@@ -44,7 +44,7 @@ class Usuario
     {
         try {
             $sql = "SELECT id, nombre ,email ,password, fecha_creacion
-                    FROM usuarios WHERE emai = :email LIMIT 1";
+                    FROM usuarios WHERE email = :email LIMIT 1";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([":email" => $email]);
             return $stmt->fetch();
