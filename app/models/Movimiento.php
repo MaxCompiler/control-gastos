@@ -17,7 +17,7 @@ class Movimiento
     public function crear(int $usuarioId, int $categoriaId, string $tipo, ?string $descripcion, float $monto, string $fecha): bool
     {
         try {
-            $sql = "INSERT TO movimiento(usuario_id, categoria_id, tipo, descripcion, monto,fecha)
+            $sql = "INSERT INTO movimiento(usuario_id, categoria_id, tipo, descripcion, monto,fecha)
                     values(:usuario_id, :categoria_id, :tipo, :descripcion , :monto, :fecha)";
 
             if (!in_array($tipo, ['ingreso', 'egreso'], true)) {
@@ -47,7 +47,7 @@ class Movimiento
             $sql = "SELECT m.id, m.tipo, m.descripcion, m.monto , m.fecha, m.categoria_id ,m.nombre AS categoria
                     From movimiento m
                     JOIN  categoria c on c.id = m.categoria_id
-                    WHERE m.usuario_id = :uauraio_id";
+                    WHERE m.usuario_id = :usuario_id";
 
             $params = [":usuario_id" => $usuarioId];
 
@@ -87,8 +87,8 @@ class Movimiento
 
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([
-                "id" => $id,
-                "usuario_id" => $usuarioId
+                ":id" => $id,
+                ":usuario_id" => $usuarioId
             ]);
             return $stmt->fetch();
         } catch (PDOException $e) {
@@ -101,10 +101,10 @@ class Movimiento
     {
         try {
             $sql = "UPDATE movimientos 
-                    set categorio_id = :categoria_id
-                        tipo = :tipo
-                        descripcion = :descripcion
-                        monto = :monto
+                    SET categorio_id = :categoria_id,
+                        tipo = :tipo,
+                        descripcion = :descripcion,
+                        monto = :monto,
                         fecha = :fecha
                     WHERE id = :id AND usuario_id = :usuario_id";
 
@@ -145,6 +145,7 @@ class Movimiento
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
             error_log("Movimiento:: eliminar - " . $e->getMessage());
+            return false;
         }
     }
 
@@ -154,8 +155,8 @@ class Movimiento
         $balance = ["ingresos" => 0.0, "egresos" => 0.0, "balance" => 0.0];
         try {
             $sql = "SELECT 
-                        COALESCE(SUM(CASE WHEN tipo = 'ingrese' THEN monto END),0) AS ingresos,
-                        COALESCE(SUM(CASE WHEN tipo = 'egresoso' THEN monto END),0) AS egresos,
+                        COALESCE(SUM(CASE WHEN tipo = 'ingresos' THEN monto END),0) AS ingresos,
+                        COALESCE(SUM(CASE WHEN tipo = 'egresos' THEN monto END),0) AS egresos,
                     FROM movimientos
                     WHERE usuario_id = :usuario_id
                         AND MONTH(fecha) = :mes
@@ -170,20 +171,21 @@ class Movimiento
             $fila = $stmt->fetch();
 
             $balance["ingresos"] = (float) $fila["ingresos"];
-            $balance["engresos"] = (float) $fila["egresos"];
+            $balance["egresos"] = (float) $fila["egresos"];
             $balance["balance"] = $balance["ingresos"] - $balance["egresos"];
         } catch (PDOException $e) {
             error_log("Movimiento::balanceMes - " . $e->getMessage());
-            return $balance;
         }
+
+        return $balance;
     }
 
     public function totalPorCategoria(int $usuarioId, string $tipo, int $mes, int $anio): array
     {
         try {
-            $sql = "SELECT c.nombre AS categoria ,SUM(m.monto) AS total 
-                    FROM movimiento m
-                    JOIN categorias c on c.id = m.categoria_id
+            $sql = "SELECT c.nombre AS categoria, SUM(m.monto) AS total
+                    FROM movimientos m
+                    JOIN categorias c ON c.id = m.categoria_id
                     WHERE m.usuario_id = :usuario_id
                         AND m.tipo = :tipo
                         AND MONTH(m.fecha) = :mes
